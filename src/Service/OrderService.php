@@ -8,6 +8,7 @@ use Shopware\Core\Checkout\Cart\LineItem\LineItem;
 use Shopware\Core\Checkout\Cart\Price\Struct\CartPrice;
 use Shopware\Core\Checkout\Cart\Tax\Struct\CalculatedTax;
 use Shopware\Core\Checkout\Cart\Tax\Struct\CalculatedTaxCollection;
+use Shopware\Core\Checkout\Cart\Tax\TaxCalculator;
 use Shopware\Core\Checkout\Order\Aggregate\OrderLineItem\OrderLineItemEntity;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Promotion\Cart\PromotionProcessor;
@@ -29,15 +30,20 @@ class OrderService
     /** @var LoggerInterface */
     protected $logger;
 
+    /** @var TaxCalculator */
+    protected $taxCalculator;
+
     public function __construct(
         EntityRepository $orderRepository,
         EntityRepository $orderLineItemRepository,
-        LoggerInterface $logger
+        LoggerInterface $logger,
+        TaxCalculator $taxCalculator
     )
     {
         $this->orderRepository = $orderRepository;
         $this->orderLineItemRepository = $orderLineItemRepository;
         $this->logger = $logger;
+        $this->taxCalculator = $taxCalculator;
     }
 
     /**
@@ -166,13 +172,22 @@ class OrderService
                 $productUrl = $item->getProduct()->getSeoUrls()->first()->getUrl();
             }
 
+            // Calculate prices
+            $unitPrice = $item->getUnitPrice();
+            $totalAmount = $item->getTotalPrice();
+
+            if ($order->getTaxStatus() === CartPrice::TAX_STATE_NET) {
+                $unitPrice = $this->taxCalculator->calculateGross($unitPrice, $item->getPrice()->getTaxRules());
+                $totalAmount = $this->taxCalculator->calculateGross($totalAmount, $item->getPrice()->getTaxRules());
+            }
+
             // Build the order lines array
             $lines[] = [
                 'type' =>  $this->getLineItemType($item),
                 'name' => $item->getLabel(),
                 'quantity' => $item->getQuantity(),
-                'unitPrice' => $this->getPriceArray($currencyCode, $item->getUnitPrice()),
-                'totalAmount' => $this->getPriceArray($currencyCode, $item->getTotalPrice()),
+                'unitPrice' => $this->getPriceArray($currencyCode, $unitPrice),
+                'totalAmount' => $this->getPriceArray($currencyCode, $totalAmount),
                 'vatRate' => number_format($vatRate, 2, '.', ''),
                 'vatAmount' => $this->getPriceArray($currencyCode, $vatAmount),
                 'sku' => $sku,
@@ -230,13 +245,22 @@ class OrderService
             $vatAmount = 0.0;
         }
 
+        // Calculate prices
+        $unitPrice = $shipping->getUnitPrice();
+        $totalAmount = $shipping->getTotalPrice();
+
+        if ($order->getTaxStatus() === CartPrice::TAX_STATE_NET) {
+            $unitPrice = $this->taxCalculator->calculateGross($unitPrice, $shipping->getTaxRules());
+            $totalAmount = $this->taxCalculator->calculateGross($totalAmount, $shipping->getTaxRules());
+        }
+
         // Build the order line array
         $line = [
             'type' =>  OrderLineType::TYPE_SHIPPING_FEE,
             'name' => 'Shipping',
             'quantity' => $shipping->getQuantity(),
-            'unitPrice' => $this->getPriceArray($currencyCode, $shipping->getUnitPrice()),
-            'totalAmount' => $this->getPriceArray($currencyCode, $shipping->getTotalPrice()),
+            'unitPrice' => $this->getPriceArray($currencyCode, $unitPrice),
+            'totalAmount' => $this->getPriceArray($currencyCode, $totalAmount),
             'vatRate' => number_format($vatRate, 2, '.', ''),
             'vatAmount' => $this->getPriceArray($currencyCode, $vatAmount),
             'sku' => null,
