@@ -2,36 +2,43 @@
 
 namespace Kiener\MolliePayments\Service\MollieApi;
 
-use Kiener\MolliePayments\Factory\MollieApiFactory;
+
 use Mollie\Api\Exceptions\ApiException;
+use Mollie\Api\MollieApiClient;
+use Mollie\Api\Resources\Order as MollieOrder;
 use Psr\Log\LoggerInterface;
+use Shopware\Core\System\SalesChannel\SalesChannelContext;
 
 class Order
 {
-
-    /**
-     * @var MollieApiFactory
-     */
-    private $clientFactory;
-
     /**
      * @var LoggerInterface
      */
     private $logger;
 
-    public function __construct(MollieApiFactory $clientFactory, LoggerInterface $logger)
-    {
+    /**
+     * @var MollieApiClient
+     */
+    private $apiClient;
 
-        $this->clientFactory = $clientFactory;
+    /**
+     * @var ApiClientConfigurator
+     */
+    private $configurator;
+
+    public function __construct(MollieApiClient $apiClient, ApiClientConfigurator $configurator, LoggerInterface $logger)
+    {
         $this->logger = $logger;
+        $this->apiClient = $apiClient;
+        $this->configurator = $configurator;
     }
 
-    public function setShipment(string $mollieOrderId, string $salesChannelId): bool
+    public function getOrder(string $mollieOrderId, SalesChannelContext $salesChannelContext): ?MollieOrder
     {
-        $apiClient = $this->clientFactory->getClient($salesChannelId);
+        $this->configurator->configure($this->apiClient, $salesChannelContext);
 
         try {
-            $mollieOrder = $apiClient->orders->get($mollieOrderId);
+            $mollieOrder = $this->apiClient->orders->get($mollieOrderId);
         } catch (ApiException $e) {
             $this->logger->error(
                 sprintf(
@@ -42,6 +49,17 @@ class Order
                 $e->getTrace()
             );
 
+            return null;
+        }
+
+        return $mollieOrder;
+    }
+
+    public function setShipment(string $mollieOrderId, SalesChannelContext $salesChannelContext): bool
+    {
+        $mollieOrder = $this->getOrder($mollieOrderId, $salesChannelContext);
+
+        if (!$mollieOrder instanceof Order) {
             return false;
         }
 
