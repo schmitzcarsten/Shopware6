@@ -3,6 +3,7 @@
 namespace Kiener\MolliePayments\Service\MollieApi;
 
 
+use Kiener\MolliePayments\Exception\MollieOrderCouldNotBeCancelledException;
 use Mollie\Api\Exceptions\ApiException;
 use Mollie\Api\MollieApiClient;
 use Mollie\Api\Resources\Order as MollieOrder;
@@ -53,6 +54,21 @@ class Order
         }
 
         return $mollieOrder;
+    }
+
+    public function cancelOrder(string $mollieOrderId, SalesChannelContext $salesChannelContext): void
+    {
+        $mollieOrder = $this->getOrder($mollieOrderId, $salesChannelContext);
+
+        if (!$mollieOrder instanceof MollieOrder) {
+            throw new MollieOrderCouldNotBeCancelledException($mollieOrderId);
+        }
+
+        try {
+            $mollieOrder->cancel();
+        } catch (ApiException $e) {
+            throw new MollieOrderCouldNotBeCancelledException($mollieOrderId, [], $e);
+        }
     }
 
     public function setShipment(string $mollieOrderId, SalesChannelContext $salesChannelContext): bool
