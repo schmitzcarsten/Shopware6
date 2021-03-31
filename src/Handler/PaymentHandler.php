@@ -3,6 +3,8 @@
 namespace Kiener\MolliePayments\Handler;
 
 use Exception;
+use Kiener\MolliePayments\Exception\MollieOrderCouldNotBeCancelledException;
+use Kiener\MolliePayments\Facade\MolliePaymentDoPay;
 use Kiener\MolliePayments\Helper\PaymentStatusHelper;
 use Kiener\MolliePayments\Service\CustomerService;
 use Kiener\MolliePayments\Service\CustomFieldService;
@@ -104,6 +106,10 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
      * @var ApiOrderService
      */
     private $apiOrderService;
+    /**
+     * @var MolliePaymentDoPay
+     */
+    private $payFacade;
 
     /**
      * PaymentHandler constructor.
@@ -129,7 +135,8 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
         RouterInterface $router,
         string $environment,
         ApiClientConfigurator $configurator,
-        ApiOrderService $apiOrderService
+        ApiOrderService $apiOrderService,
+        MolliePaymentDoPay $payFacade
     )
     {
         $this->transactionStateHandler = $transactionStateHandler;
@@ -143,6 +150,7 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
         $this->environment = $environment;
         $this->configurator = $configurator;
         $this->apiOrderService = $apiOrderService;
+        $this->payFacade = $payFacade;
     }
 
     /**
@@ -179,38 +187,41 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
         SalesChannelContext $salesChannelContext
     ): RedirectResponse
     {
+        die('do refactoring first !');
+        
+        $paymentUrl = $this->payFacade->getPaymentUrl($this->paymentMethod, $transaction, $salesChannelContext);
+
         $order = $this->orderService->getOrder($transaction->getOrder()->getId(), $salesChannelContext->getContext()) ?? $transaction->getOrder();
-        $salesChannelContext = $order->getSalesChannel() ?? $salesChannelContext;
-
-        $this->configurator->configure($this->apiClient, $salesChannelContext);
-
         $customFields = $order->getCustomFields();
         $mollieOrderId = $customFields[CustomFieldsInterface::MOLLIE_KEY][CustomFieldsInterface::ORDER_KEY] ?? null;
 
-        //ToDo: Data for specific payment methods vullen. Functie aanroepen die met specifieke payment methods overriden
-
-        /** @var Order|null $mollieOrder */
-        $mollieOrder = null;
-
         if (!empty($mollieOrderId)) {
-            $mollieOrder = $this->apiOrderService->getOrder($mollieOrderId, $salesChannelContext);
-        } else {
-            $orderData = $this->prepareOrderForMollie(
-                $this->paymentMethod,
-                $transaction->getOrderTransaction()->getId(),
-                $order,
-                $transaction->getReturnUrl(),
-                $salesChannelContext
-            );
+            // we have to cancel order at mollie
+            try {
+                $this->apiOrderService->cancelOrder($mollieOrderId, $salesChannelContext);
+            } catch (MollieOrderCouldNotBeCancelledException $e) {
+                // we do nothing here.
+            }
 
-            // Create an order at Mollie, based on the order data.
-            $mollieOrder = $this->createOrderAtMollie(
-                $orderData,
-                $transaction->getReturnUrl(),
-                $order,
-                $salesChannelContext
-            );
+            unset($customFields[CustomFieldsInterface::MOLLIE_KEY][CustomFieldsInterface::ORDER_KEY]);
         }
+
+        $orderData = $this->prepareOrderForMollie(
+            $this->paymentMethod,
+            $transaction->getOrderTransaction()->getId(),
+            $order,
+            $transaction->getReturnUrl(),
+            $salesChannelContext
+        );
+
+        // Create an order at Mollie, based on the order data.
+        $mollieOrder = $this->createOrderAtMollie(
+            $orderData,
+            $transaction->getReturnUrl(),
+            $order,
+            $salesChannelContext
+        );
+
 
         if (!$mollieOrder instanceof Order) {
             $this->logErrorAndThrowException('Could not generate or fetch a mollie order! Aborting payment process', $salesChannelContext);
@@ -415,6 +426,7 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
         array $paymentData = []
     ): array
     {
+        die('do refactoring first !');
         /** @var MollieSettingStruct $settings */
         $settings = $this->settingsService->getSettings(
             $salesChannelContext->getSalesChannel()->getId(),
@@ -480,60 +492,60 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
          * to Mollie's Orders API to create an order payment.
          */
         $orderData = [
-            self::FIELD_AMOUNT => $this->orderService->getPriceArray(
-                $currency !== null ? $currency->getIsoCode() : 'EUR',
-                $order->getAmountTotal()
-            ),
-            self::FIELD_REDIRECT_URL => $this->router->generate('frontend.mollie.payment', [
-                'transactionId' => $transactionId,
-                'returnUrl' => urlencode($returnUrl),
-            ], $this->router::ABSOLUTE_URL),
-            self::FIELD_LOCALE => $locale !== null ? $locale->getCode() : null,
-            self::FIELD_METHOD => $paymentMethod,
-            self::FIELD_ORDER_NUMBER => $order->getOrderNumber(),
-            self::FIELD_LINES => $this->orderService->getOrderLinesArray($order),
-            self::FIELD_BILLING_ADDRESS => $this->customerService->getAddressArray(
-                $customer->getDefaultBillingAddress(),
-                $customer
-            ),
-            self::FIELD_SHIPPING_ADDRESS => $this->customerService->getAddressArray(
-                $customer->getDefaultShippingAddress(),
-                $customer
-            ),
-            self::FIELD_PAYMENT => $paymentData,
+//            self::FIELD_AMOUNT => $this->orderService->getPriceArray(
+//                $currency !== null ? $currency->getIsoCode() : 'EUR',
+//                $order->getAmountTotal()
+//            ),
+//            self::FIELD_REDIRECT_URL => $this->router->generate('frontend.mollie.payment', [
+//                'transactionId' => $transactionId,
+//                'returnUrl' => urlencode($returnUrl),
+//            ], $this->router::ABSOLUTE_URL),
+//            self::FIELD_LOCALE => $locale !== null ? $locale->getCode() : null,
+//            self::FIELD_METHOD => $paymentMethod,
+//            self::FIELD_ORDER_NUMBER => $order->getOrderNumber(),
+//            self::FIELD_LINES => $this->orderService->getOrderLinesArray($order),
+//            self::FIELD_BILLING_ADDRESS => $this->customerService->getAddressArray(
+//                $customer->getDefaultBillingAddress(),
+//                $customer
+//            ),
+//            self::FIELD_SHIPPING_ADDRESS => $this->customerService->getAddressArray(
+//                $customer->getDefaultShippingAddress(),
+//                $customer
+//            ),
+//            self::FIELD_PAYMENT => $paymentData,
         ];
 
         /**
          * Handle vat free orders.
          */
-        if ($order->getTaxStatus() === CartPrice::TAX_STATE_FREE) {
-            $orderData[self::FIELD_AMOUNT] = $this->orderService->getPriceArray(
-                $currency !== null ? $currency->getIsoCode() : 'EUR',
-                $order->getAmountNet()
-            );
-        }
-
-        /**
-         * Try to fetch the Order Lifetime configuration. If it is can be fetched, set it expiresAt field
-         * The expiresAt is optional and defaults to 28 days if not set
-         */
-        try {
-            $dueDate = $settings->getOrderLifetimeDate();
-
-            if ($dueDate !== null) {
-                $orderData[self::FIELD_EXPIRES_AT] = $dueDate;
-            }
-        } catch (Exception $e) {
-            $this->logger->addEntry(
-                $e->getMessage(),
-                $salesChannelContext->getContext(),
-                $e,
-                [
-                    'function' => 'finalize-payment',
-                ],
-                Logger::ERROR
-            );
-        }
+//        if ($order->getTaxStatus() === CartPrice::TAX_STATE_FREE) {
+//            $orderData[self::FIELD_AMOUNT] = $this->orderService->getPriceArray(
+//                $currency !== null ? $currency->getIsoCode() : 'EUR',
+//                $order->getAmountNet()
+//            );
+//        }
+//
+//        /**
+//         * Try to fetch the Order Lifetime configuration. If it is can be fetched, set it expiresAt field
+//         * The expiresAt is optional and defaults to 28 days if not set
+//         */
+//        try {
+//            $dueDate = $settings->getOrderLifetimeDate();
+//
+//            if ($dueDate !== null) {
+//                $orderData[self::FIELD_EXPIRES_AT] = $dueDate;
+//            }
+//        } catch (Exception $e) {
+//            $this->logger->addEntry(
+//                $e->getMessage(),
+//                $salesChannelContext->getContext(),
+//                $e,
+//                [
+//                    'function' => 'finalize-payment',
+//                ],
+//                Logger::ERROR
+//            );
+//        }
 
         // Temporarily disabled due to errors with Paypal
         // $orderData = $this->processPaymentMethodSpecificParameters($orderData, $salesChannelContext, $customer, $locale);
