@@ -190,53 +190,53 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
         
         $paymentUrl = $this->payFacade->getPaymentUrl($this->paymentMethod, $transaction, $salesChannelContext);
 
-        $order = $this->orderService->getOrder($transaction->getOrder()->getId(), $salesChannelContext->getContext()) ?? $transaction->getOrder();
-        $customFields = $order->getCustomFields();
-        $mollieOrderId = $customFields[CustomFieldsInterface::MOLLIE_KEY][CustomFieldsInterface::ORDER_KEY] ?? null;
+//        $order = $this->orderService->getOrder($transaction->getOrder()->getId(), $salesChannelContext->getContext()) ?? $transaction->getOrder();
+//        $customFields = $order->getCustomFields();
+//        $mollieOrderId = $customFields[CustomFieldsInterface::MOLLIE_KEY][CustomFieldsInterface::ORDER_KEY] ?? null;
+//
+//        if (!empty($mollieOrderId)) {
+//            // we have to cancel order at mollie
+//            try {
+//                $this->apiOrderService->cancelOrder($mollieOrderId, $salesChannelContext);
+//            } catch (MollieOrderCouldNotBeCancelledException $e) {
+//                $this->logger->addEntry(
+//                    $e->getMessage(),
+//                    $salesChannelContext->getContext(),
+//                    $e,
+//                    ['shopwareOrderNumber' => $order->getOrderNumber()],
+//                    Logger::WARNING
+//                );
+//            }
+//
+//            unset($customFields[CustomFieldsInterface::MOLLIE_KEY][CustomFieldsInterface::ORDER_KEY]);
+//        }
+//
+//        $orderData = $this->prepareOrderForMollie(
+//            $this->paymentMethod,
+//            $transaction->getOrderTransaction()->getId(),
+//            $order,
+//            $transaction->getReturnUrl(),
+//            $salesChannelContext
+//        );
+//
+//        // Create an order at Mollie, based on the order data.
+//        $mollieOrder = $this->createOrderAtMollie(
+//            $orderData,
+//            $transaction->getReturnUrl(),
+//            $order,
+//            $salesChannelContext
+//        );
+//
+//
+//        if (!$mollieOrder instanceof Order) {
+//            $this->logErrorAndThrowException('Could not generate or fetch a mollie order! Aborting payment process', $salesChannelContext);
+//        }
+//
+//        $paymentUrl = $mollieOrder->getCheckoutUrl();
 
-        if (!empty($mollieOrderId)) {
-            // we have to cancel order at mollie
-            try {
-                $this->apiOrderService->cancelOrder($mollieOrderId, $salesChannelContext);
-            } catch (MollieOrderCouldNotBeCancelledException $e) {
-                $this->logger->addEntry(
-                    $e->getMessage(),
-                    $salesChannelContext->getContext(),
-                    $e,
-                    ['shopwareOrderNumber' => $order->getOrderNumber()],
-                    Logger::WARNING
-                );
-            }
-
-            unset($customFields[CustomFieldsInterface::MOLLIE_KEY][CustomFieldsInterface::ORDER_KEY]);
-        }
-
-        $orderData = $this->prepareOrderForMollie(
-            $this->paymentMethod,
-            $transaction->getOrderTransaction()->getId(),
-            $order,
-            $transaction->getReturnUrl(),
-            $salesChannelContext
-        );
-
-        // Create an order at Mollie, based on the order data.
-        $mollieOrder = $this->createOrderAtMollie(
-            $orderData,
-            $transaction->getReturnUrl(),
-            $order,
-            $salesChannelContext
-        );
-
-
-        if (!$mollieOrder instanceof Order) {
-            $this->logErrorAndThrowException('Could not generate or fetch a mollie order! Aborting payment process', $salesChannelContext);
-        }
-
-        $paymentUrl = $mollieOrder->getCheckoutUrl();
-
-        if (empty($paymentUrl)) {
-            $this->logErrorAndThrowException('Payment Url for mollie could not be fetched');
-        }
+//        if (empty($paymentUrl)) {
+//            $this->logErrorAndThrowException('Payment Url for mollie could not be fetched');
+//        }
 
         if (method_exists($this->transactionStateHandler, 'process')) {
             try {
@@ -604,16 +604,16 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
         //$orderData = array_merge($orderData, $this->paymentMethodData);
 
         // Log the order data
-        if ($settings->isDebugMode()) {
-            $this->logger->addEntry(
-                sprintf('Order %s is prepared to be paid through Mollie', $order->getOrderNumber()),
-                $salesChannelContext->getContext(),
-                null,
-                [
-                    'orderData' => $orderData,
-                ]
-            );
-        }
+//        if ($settings->isDebugMode()) {
+//            $this->logger->addEntry(
+//                sprintf('Order %s is prepared to be paid through Mollie', $order->getOrderNumber()),
+//                $salesChannelContext->getContext(),
+//                null,
+//                [
+//                    'orderData' => $orderData,
+//                ]
+//            );
+//        }
 
         return $orderData;
     }
