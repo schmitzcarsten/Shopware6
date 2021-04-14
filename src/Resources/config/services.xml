@@ -27,7 +27,7 @@
         <!-- Helpers -->
         <service id="Kiener\MolliePayments\Helper\DeliveryStateHelper" class="Kiener\MolliePayments\Helper\DeliveryStateHelper">
             <argument type="service" id="Kiener\MolliePayments\Service\DeliveryService"/>
-            <argument type="service" id="Shopware\Core\Framework\StateMachine\StateMachineRegistry"/>
+            <argument type="service" id="Shopware\Core\System\StateMachine\StateMachineRegistry"/>
         </service>
 
         <service id="Kiener\MolliePayments\Helper\OrderStateHelper" class="Kiener\MolliePayments\Helper\OrderStateHelper">

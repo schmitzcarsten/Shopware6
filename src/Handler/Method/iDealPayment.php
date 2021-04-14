@@ -17,15 +17,23 @@ class iDealPayment extends PaymentHandler
     /** @var string */
     protected $paymentMethod = self::PAYMENT_METHOD_NAME;
 
-    protected function processPaymentMethodSpecificParameters(
+    public function processPaymentMethodSpecificParameters(
         array $orderData,
         SalesChannelContext $salesChannelContext,
         CustomerEntity $customer,
         LocaleEntity $locale
     ): array
     {
-        if (!array_key_exists(static::FIELD_IDEAL_ISSUER, $orderData[static::FIELD_PAYMENT]) || in_array($orderData[static::FIELD_PAYMENT][static::FIELD_IDEAL_ISSUER], [null, ''], true)) {
-            //ToDo: Dropdown met banken in checkout, daarna deze vullen
+        $customFields = $customer->getCustomFields() ?? [];
+
+        $issuer = $customFields['mollie_payments']['preferred_ideal_issuer'] ?? '';
+
+        if (empty($issuer)) {
+            return $orderData;
+        }
+
+        if (!isset($orderData['payment']['issuer']) || empty($orderData['payment']['issuer'])) {
+            $orderData['payment']['issuer'] = $issuer;
         }
 
         return $orderData;

@@ -23,7 +23,6 @@ use Mollie\Api\Types\PaymentMethod;
 use Mollie\Api\Types\PaymentStatus;
 use Monolog\Logger;
 use RuntimeException;
-use Shopware\Core\Checkout\Cart\Price\Struct\CartPrice;
 use Shopware\Core\Checkout\Customer\CustomerEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
 use Shopware\Core\Checkout\Order\OrderEntity;
@@ -68,7 +67,7 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
     protected $paymentMethod;
 
     /** @var array */
-    protected $paymentMethodData = [];
+    //protected $paymentMethodData = [];
 
     /** @var OrderTransactionStateHandler */
     protected $transactionStateHandler;
@@ -161,7 +160,7 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
      *
      * @return array
      */
-    protected function processPaymentMethodSpecificParameters(array $orderData, SalesChannelContext $salesChannelContext, CustomerEntity $customer, LocaleEntity $locale): array
+    public function processPaymentMethodSpecificParameters(array $orderData, SalesChannelContext $salesChannelContext, CustomerEntity $customer, LocaleEntity $locale): array
     {
     }
 
@@ -200,7 +199,13 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
             try {
                 $this->apiOrderService->cancelOrder($mollieOrderId, $salesChannelContext);
             } catch (MollieOrderCouldNotBeCancelledException $e) {
-                // we do nothing here.
+                $this->logger->addEntry(
+                    $e->getMessage(),
+                    $salesChannelContext->getContext(),
+                    $e,
+                    ['shopwareOrderNumber' => $order->getOrderNumber()],
+                    Logger::WARNING
+                );
             }
 
             unset($customFields[CustomFieldsInterface::MOLLIE_KEY][CustomFieldsInterface::ORDER_KEY]);
@@ -554,47 +559,49 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
          * Generate the URL for Mollie's webhook call only on prod environment. This webhook is used
          * to handle payment updates.
          */
-        if (
-            getenv(self::ENV_LOCAL_DEVELOPMENT) === false
-            || (bool)getenv(self::ENV_LOCAL_DEVELOPMENT) === false
-        ) {
-            $orderData[self::FIELD_WEBHOOK_URL] = $this->router->generate('frontend.mollie.webhook', [
-                'transactionId' => $transactionId
-            ], $this->router::ABSOLUTE_URL);
-        }
+//        if (
+//            getenv(self::ENV_LOCAL_DEVELOPMENT) === false
+//            || (bool)getenv(self::ENV_LOCAL_DEVELOPMENT) === false
+//        ) {
+//            $orderData[self::FIELD_WEBHOOK_URL] = $this->router->generate('frontend.mollie.webhook', [
+//                'transactionId' => $transactionId
+//            ], $this->router::ABSOLUTE_URL);
+//        }
 
         $customFields = $customer->getCustomFields();
 
-        // @todo Handle credit card tokens from the Credit Card payment handler
-        if (
-            $this->paymentMethod === PaymentMethod::CREDITCARD
-            && isset($customFields[CustomFieldService::CUSTOM_FIELDS_KEY_MOLLIE_PAYMENTS][CustomerService::CUSTOM_FIELDS_KEY_CREDIT_CARD_TOKEN])
-            && (string)$customFields[CustomFieldService::CUSTOM_FIELDS_KEY_MOLLIE_PAYMENTS][CustomerService::CUSTOM_FIELDS_KEY_CREDIT_CARD_TOKEN] !== ''
-        ) {
-            $orderData['payment']['cardToken'] = $customFields[CustomFieldService::CUSTOM_FIELDS_KEY_MOLLIE_PAYMENTS][CustomerService::CUSTOM_FIELDS_KEY_CREDIT_CARD_TOKEN];
-            $this->customerService->setCardToken($customer, '', $salesChannelContext->getContext());
-        }
-
-        // To connect orders too customers.
-        if (isset($customFields[CustomerService::CUSTOM_FIELDS_KEY_MOLLIE_CUSTOMER_ID])
-            && (string)$customFields[CustomerService::CUSTOM_FIELDS_KEY_MOLLIE_CUSTOMER_ID] !== ''
-            && $settings->createNoCustomersAtMollie() === false
-            && $settings->isTestMode() === false
-        ) {
-            $orderData['payment']['customerId'] = $customFields[CustomerService::CUSTOM_FIELDS_KEY_MOLLIE_CUSTOMER_ID];
-        }
+//        // @todo Handle credit card tokens from the Credit Card payment handler
+//        if (
+//            $this->paymentMethod === PaymentMethod::CREDITCARD
+//            && isset($customFields[CustomFieldService::CUSTOM_FIELDS_KEY_MOLLIE_PAYMENTS][CustomerService::CUSTOM_FIELDS_KEY_CREDIT_CARD_TOKEN])
+//            && (string)$customFields[CustomFieldService::CUSTOM_FIELDS_KEY_MOLLIE_PAYMENTS][CustomerService::CUSTOM_FIELDS_KEY_CREDIT_CARD_TOKEN] !== ''
+//        ) {
+//            $orderData['payment']['cardToken'] = $customFields[CustomFieldService::CUSTOM_FIELDS_KEY_MOLLIE_PAYMENTS][CustomerService::CUSTOM_FIELDS_KEY_CREDIT_CARD_TOKEN];
+//            $this->customerService->setCardToken($customer, '', $salesChannelContext->getContext());
+//        }
+//
+//        // To connect orders too customers.
+//        if (isset($customFields[CustomerService::CUSTOM_FIELDS_KEY_MOLLIE_CUSTOMER_ID])
+//            && (string)$customFields[CustomerService::CUSTOM_FIELDS_KEY_MOLLIE_CUSTOMER_ID] !== ''
+//            && $settings->createNoCustomersAtMollie() === false
+//            && $settings->isTestMode() === false
+//        ) {
+//            $orderData['payment']['customerId'] = $customFields[CustomerService::CUSTOM_FIELDS_KEY_MOLLIE_CUSTOMER_ID];
+//        }
 
 
         // @todo Handle iDeal issuers from the iDeal payment handler
-        if (
-            $this->paymentMethod === PaymentMethod::IDEAL
-            && isset($customFields[CustomFieldService::CUSTOM_FIELDS_KEY_MOLLIE_PAYMENTS][CustomerService::CUSTOM_FIELDS_KEY_PREFERRED_IDEAL_ISSUER])
-            && (string)$customFields[CustomFieldService::CUSTOM_FIELDS_KEY_MOLLIE_PAYMENTS][CustomerService::CUSTOM_FIELDS_KEY_PREFERRED_IDEAL_ISSUER] !== ''
-        ) {
-            $orderData['payment']['issuer'] = $customFields[CustomFieldService::CUSTOM_FIELDS_KEY_MOLLIE_PAYMENTS][CustomerService::CUSTOM_FIELDS_KEY_PREFERRED_IDEAL_ISSUER];
-        }
+//        if (
+//            $this->paymentMethod === PaymentMethod::IDEAL
+//            && isset($customFields[CustomFieldService::CUSTOM_FIELDS_KEY_MOLLIE_PAYMENTS][CustomerService::CUSTOM_FIELDS_KEY_PREFERRED_IDEAL_ISSUER])
+//            && (string)$customFields[CustomFieldService::CUSTOM_FIELDS_KEY_MOLLIE_PAYMENTS][CustomerService::CUSTOM_FIELDS_KEY_PREFERRED_IDEAL_ISSUER] !== ''
+//        ) {
+//            $orderData['payment']['issuer'] = $customFields[CustomFieldService::CUSTOM_FIELDS_KEY_MOLLIE_PAYMENTS][CustomerService::CUSTOM_FIELDS_KEY_PREFERRED_IDEAL_ISSUER];
+//        }
 
-        $orderData = array_merge($orderData, $this->paymentMethodData);
+
+        //@todo don't think its used at all
+        //$orderData = array_merge($orderData, $this->paymentMethodData);
 
         // Log the order data
         if ($settings->isDebugMode()) {

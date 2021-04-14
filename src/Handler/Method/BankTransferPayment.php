@@ -7,7 +7,6 @@ use Kiener\MolliePayments\Handler\PaymentHandler;
 use Kiener\MolliePayments\Setting\MollieSettingStruct;
 use Mollie\Api\Types\PaymentMethod;
 use Shopware\Core\Checkout\Customer\CustomerEntity;
-use Shopware\Core\Framework\DataAbstractionLayer\Exception\InconsistentCriteriaIdsException;
 use Shopware\Core\System\Locale\LocaleEntity;
 use Shopware\Core\System\SalesChannel\SalesChannelContext;
 
@@ -29,7 +28,7 @@ class BankTransferPayment extends PaymentHandler
      *
      * @return array
      */
-    protected function processPaymentMethodSpecificParameters(
+    public function processPaymentMethodSpecificParameters(
         array $orderData,
         SalesChannelContext $salesChannelContext,
         CustomerEntity $customer,
