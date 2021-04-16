@@ -5,6 +5,7 @@ namespace Kiener\MolliePayments\Handler;
 use Exception;
 use Kiener\MolliePayments\Exception\MollieOrderCouldNotBeCancelledException;
 use Kiener\MolliePayments\Facade\MolliePaymentDoPay;
+use Kiener\MolliePayments\Exception\PaymentUrlException;
 use Kiener\MolliePayments\Helper\PaymentStatusHelper;
 use Kiener\MolliePayments\Service\CustomerService;
 use Kiener\MolliePayments\Service\CustomFieldService;
@@ -24,6 +25,7 @@ use Mollie\Api\Types\PaymentStatus;
 use Monolog\Logger;
 use RuntimeException;
 use Shopware\Core\Checkout\Customer\CustomerEntity;
+use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionEntity;
 use Shopware\Core\Checkout\Order\Aggregate\OrderTransaction\OrderTransactionStateHandler;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Payment\Cart\AsyncPaymentTransactionStruct;
@@ -187,7 +189,7 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
     ): RedirectResponse
     {
         die('do refactoring first !');
-        
+
         $paymentUrl = $this->payFacade->getPaymentUrl($this->paymentMethod, $transaction, $salesChannelContext);
 
 //        $order = $this->orderService->getOrder($transaction->getOrder()->getId(), $salesChannelContext->getContext()) ?? $transaction->getOrder();
@@ -234,6 +236,82 @@ class PaymentHandler implements AsynchronousPaymentHandlerInterface
 //
 //        $paymentUrl = $mollieOrder->getCheckoutUrl();
 
+        /**
+         * Prepare the order for the Mollie Orders API and retrieve
+         * a payment URL to redirect the customer to in order
+         * to finish the payment.
+         */
+//        try {
+//            /** @var OrderEntity $order */
+//            $order = $this->getOrderFromTransaction($transaction, $salesChannelContext);
+//
+//            /** @var Customer $customer */
+//            $customer = null;
+//
+//
+//            /** @var array $orderData */
+//            $orderData = [];
+//
+//            /** @var Order|null $mollieOrder */
+//            $mollieOrder = null;
+//
+//            // Prepare the order data for Mollie.
+//            if ($order !== null) {
+//                $orderCustomer = $order->getOrderCustomer();
+//                if ($orderCustomer !== null) {
+//                    if ($orderCustomer->getCustomer() !== null) {
+//                        $customer = $orderCustomer->getCustomer();
+//                    }
+//                }
+//                $orderData = $this->prepareOrderForMollie(
+//                    $this->paymentMethod,
+//                    $transaction->getOrderTransaction()->getId(),
+//                    $order,
+//                    $transaction->getReturnUrl(),
+//                    $salesChannelContext
+//                );
+//            }
+//
+//            // Create an order at Mollie, based on the order data.
+//            if (!empty($orderData)) {
+//                $mollieOrder = $this->createOrderAtMollie(
+//                    $orderData,
+//                    $transaction->getReturnUrl(),
+//                    $order,
+//                    $salesChannelContext
+//                );
+//            }
+//
+//            // Get the payment url from the order at Mollie.
+//            if ($mollieOrder !== null) {
+//                $paymentUrl = isset($mollieOrder) ? $mollieOrder->getCheckoutUrl() : null;
+//            }
+//        } catch (Exception $e) {
+//            $this->logger->addEntry(
+//                $e->getMessage(),
+//                $salesChannelContext->getContext(),
+//                $e,
+//                [
+//                    'function' => 'order-prepare',
+//                ],
+//                Logger::ERROR
+//            );
+//
+//            $transactions = $order->getTransactions();
+//            $transactions->sort(function(OrderTransactionEntity $a, OrderTransactionEntity $b) {
+//                return $a->getCreatedAt() <=> $b->getCreatedAt();
+//            });
+//            $lastTransaction = $transactions->last();
+//
+//            throw new PaymentUrlException($lastTransaction->getId(), sprintf('Could not create a Mollie Payment Url, error: %s', $e->getMessage()));
+//        }
+//
+//        // Set the payment status to in progress
+//        if (
+//            isset($paymentUrl)
+//            && !empty($paymentUrl)
+//            && method_exists($this->transactionStateHandler, 'process')
+//        ) {
 //        if (empty($paymentUrl)) {
 //            $this->logErrorAndThrowException('Payment Url for mollie could not be fetched');
 //        }

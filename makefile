@@ -23,10 +23,26 @@ clean: ## Cleans all dependencies
 	rm -rf .reports | true
 
 # ------------------------------------------------------------------------------------------------------------
+
 test: ## Starts all Tests
-	php vendor/bin/phpunit --configuration=phpunit.xml
+	@XDEBUG_MODE=coverage php vendor/bin/phpunit --configuration=phpunit.xml --coverage-html ../../../public/.reports/mollie/coverage
+
+csfix: ## Starts the PHP CS Fixer
+	@php vendor/bin/php-cs-fixer fix --config=./.php_cs.php --dry-run
+
+stan: ## Starts the PHPStan Analyser
+	@php vendor/bin/phpstan analyse -c ./.phpstan.neon
+
+insights: ## Starts the PHPInsights Analyser
+	@php vendor/bin/phpinsights analyse --no-interaction
 
 # ------------------------------------------------------------------------------------------------------------
 
+pr: ## Prepares everything for a Pull Request
+	@php vendor/bin/php-cs-fixer fix --config=./.php_cs.php
+	@make stan -B
+	@make test -B
+
 release: ## Creates a new ZIP package
-	@cd .. && zip -qq -r -0 MolliePayments-$(PLUGIN_VERSION).zip MolliePayments/ -x '*.git*' '*.reports*' '*.travis.yml*' '*/tests*' '*/makefile' '*.DS_Store' '*phpunit*'
+	@cd .. && rm -rf MolliePayments-$(PLUGIN_VERSION).zip
+	@cd .. && zip -qq -r -0 MolliePayments-$(PLUGIN_VERSION).zip MolliePayments/ -x '*.git*' '*.reports*' '*/tests*' '*/makefile' '*.DS_Store' '*/phpunit.xml' '*/.phpstan.neon' '*/.php_cs.php' '*/phpinsights.php'
