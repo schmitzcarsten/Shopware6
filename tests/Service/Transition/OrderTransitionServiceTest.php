@@ -1,17 +1,14 @@
 <?php declare(strict_types=1);
 
-namespace Kiener\MolliePayments\Tests\Helper;
+namespace Kiener\MolliePayments\Tests\Service\Transition;
 
-use Kiener\MolliePayments\Service\LoggerService;
-use Kiener\MolliePayments\Service\Order\OrderTransitionService;
-use Kiener\MolliePayments\Tests\Fakes\FakeEntityRepository;
-use PHPUnit\Framework\MockObject\MockObject;
+use Kiener\MolliePayments\Service\Transition\OrderTransitionService;
+use Kiener\MolliePayments\Service\Transition\TransitionService;
 use PHPUnit\Framework\TestCase;
 use Shopware\Core\Checkout\Order\OrderDefinition;
 use Shopware\Core\Checkout\Order\OrderEntity;
 use Shopware\Core\Checkout\Order\OrderStates;
 use Shopware\Core\Framework\Context;
-use Shopware\Core\Framework\Log\LogEntryDefinition;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineState\StateMachineStateEntity;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineTransition\StateMachineTransitionActions;
 use Shopware\Core\System\StateMachine\Aggregation\StateMachineTransition\StateMachineTransitionEntity;
@@ -20,54 +17,19 @@ use Shopware\Core\System\StateMachine\Transition;
 
 class OrderTransitionServiceTest extends TestCase
 {
-    /** @var FakeEntityRepository */
-    private $loggerRepository;
-
-    /** @var LoggerService */
-    private $logger;
-
-    /** @var MockObject|StateMachineRegistry */
-    private $stateMachineRegistry;
-
     /** @var OrderTransitionService */
     private $orderTransitionService;
 
+    /**
+     * @var \PHPUnit\Framework\MockObject\MockObject|StateMachineRegistry
+     */
+    private $stateMachineRegistry;
+
     public function setUp(): void
     {
-        $this->loggerRepository = new FakeEntityRepository(new LogEntryDefinition());
-        $this->logger = new LoggerService($this->loggerRepository);
-        $this->stateMachineRegistry = $this->createMock(StateMachineRegistry::class);
+        $this->stateMachineRegistry = $this->getMockBuilder(StateMachineRegistry::class)->disableOriginalConstructor()->getMock();
 
-        $this->orderTransitionService = new OrderTransitionService($this->logger, $this->stateMachineRegistry);
-    }
-
-    /**
-     * Tests if the available transitions for the current state are returned
-     */
-    public function testGetAvailableTransitions(): void
-    {
-        $transition1 = new StateMachineTransitionEntity();
-        $transition1->setId('transitionId1');
-        $transition1->setActionName('transition_1');
-        $transition2 = new StateMachineTransitionEntity();
-        $transition2->setId('transitionId2');
-        $transition2->setActionName('transition_2');
-
-        $order = new OrderEntity();
-        $order->setId('orderId');
-
-        $context = $this->createMock(Context::class);
-
-        $this->stateMachineRegistry->expects($this->once())
-            ->method('getAvailableTransitions')
-            ->with(OrderDefinition::ENTITY_NAME, 'orderId', 'stateId', $context)
-            ->willReturn([$transition1, $transition2]);
-
-        $availableTransitions = $this->orderTransitionService->getAvailableTransitions($order, $context);
-
-        $expectedTransitions = ['transition_1', 'transition_2'];
-
-        $this->assertEquals($expectedTransitions, $availableTransitions);
+        $this->orderTransitionService = new OrderTransitionService(new TransitionService($this->stateMachineRegistry));
     }
 
     /**
