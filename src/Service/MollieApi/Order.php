@@ -2,7 +2,6 @@
 
 namespace Kiener\MolliePayments\Service\MollieApi;
 
-
 use Kiener\MolliePayments\Exception\MollieOrderCouldNotBeCancelledException;
 use Mollie\Api\Exceptions\ApiException;
 use Mollie\Api\MollieApiClient;
